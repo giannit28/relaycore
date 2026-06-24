@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# TypeScript
+*.tsbuildinfo
+
+# Vitest
+.vitest/
+
+# Temporary
+tmp/
+temp/
+
+# Cache
+.cache/
+.eslintcache
+
+# Turborepo (if later)
+.turbo/
+
+# Nx (if later)
+.nx/
+
+# Bun (if ever used)
+.bun/
+
+# Local testing data
+data/
+dlq/
