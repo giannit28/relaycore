@@ -59,7 +59,7 @@ describe("Broker", () => {
   });
 
   it("retries a failing subscriber until it succeeds", async () => {
-    const broker = new Broker({ maxAttempts: 3, retryDelayMS: 0 });
+    const broker = new Broker({ maxAttempts: 3, retryDelayMs: 0 });
 
     const handler = vi
       .fn()
@@ -87,7 +87,7 @@ describe("Broker", () => {
   });
 
   it("dead-letters a subscriber after max attempts are exhausted", async () => {
-    const broker = new Broker({ maxAttempts: 2, retryDelayMS: 0 });
+    const broker = new Broker({ maxAttempts: 2, retryDelayMs: 0 });
 
     const handler = vi.fn().mockRejectedValue(new Error("Permanent failure"));
 
@@ -116,7 +116,7 @@ describe("Broker", () => {
   });
 
   it("keeps successful and failed subscribers independent", async () => {
-    const broker = new Broker({ maxAttempts: 2, retryDelayMS: 0 });
+    const broker = new Broker({ maxAttempts: 2, retryDelayMs: 0 });
 
     const successHandler = vi.fn().mockResolvedValue(undefined);
     const failingHandler = vi.fn().mockRejectedValue(new Error("Failure"));

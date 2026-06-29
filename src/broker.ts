@@ -11,9 +11,17 @@ import {
 import { DeadLetterEntry } from "./dlq.js";
 import { sleep } from "./utils/utils.js";
 
+type RetryStrategy = "fixed" | "linear" | "exponential";
 type BrokerConfig = {
   maxAttempts: number;
-  retryDelayMS: number;
+  retryDelayMs: number;
+  retryStrategy: RetryStrategy;
+};
+
+const DEFAULT_CONFIG: BrokerConfig = {
+  maxAttempts: 3,
+  retryDelayMs: 1000,
+  retryStrategy: "fixed",
 };
 
 export class Broker {
@@ -22,10 +30,17 @@ export class Broker {
   private deadLetters: DeadLetterEntry[] = [];
   private readonly maxAttempts: number;
   private readonly retryDelayMs: number;
+  private readonly retryStrategy: RetryStrategy;
 
-  constructor(config: BrokerConfig = { maxAttempts: 3, retryDelayMS: 1000 }) {
-    this.maxAttempts = config.maxAttempts;
-    this.retryDelayMs = config.retryDelayMS;
+  constructor(config: Partial<BrokerConfig> = {}) {
+    const mergedConfig: BrokerConfig = {
+      ...DEFAULT_CONFIG,
+      ...config,
+    };
+
+    this.maxAttempts = mergedConfig.maxAttempts;
+    this.retryDelayMs = mergedConfig.retryDelayMs;
+    this.retryStrategy = mergedConfig.retryStrategy;
   }
 
   subscribe(subscriber: Subscriber): void {
@@ -101,7 +116,7 @@ export class Broker {
         record.attempts++;
         record.status = "pending";
 
-        await sleep(this.retryDelayMs);
+        await sleep(this.getRetryDelay(record.attempts));
 
         return this.deliverToSubscriber(subscriber, message, record);
       }
@@ -115,5 +130,15 @@ export class Broker {
         failedAt: new Date(),
       });
     }
+  }
+
+  private getRetryDelay(attempt: number): number {
+    const strategy = {
+      fixed: () => this.retryDelayMs,
+      linear: () => this.retryDelayMs * attempt,
+      exponential: () => this.retryDelayMs * 2 ** (attempt - 1),
+    };
+
+    return strategy[this.retryStrategy]();
   }
 }

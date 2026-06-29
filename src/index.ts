@@ -5,7 +5,8 @@ import { OrderSubscriber } from "./subscribers/orderSubscriber.js";
 
 const broker = new Broker({
   maxAttempts: 2,
-  retryDelayMS: 1000,
+  retryDelayMs: 1000,
+  retryStrategy: "exponential",
 });
 
 broker.subscribe(new OrderSubscriber());
