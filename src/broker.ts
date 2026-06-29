@@ -4,18 +4,38 @@ import { Subscriber } from "./subscriber.js";
 import {
   createDeliveryKey,
   createDeliveryRecord,
+  createPublishResult,
+  PublishResult,
   type DeliveryRecord,
 } from "./delivery.js";
+import { DeadLetterEntry } from "./dlq.js";
+import { sleep } from "./utils/utils.js";
+
+type BrokerConfig = {
+  maxAttempts: number;
+  retryDelayMS: number;
+};
 
 export class Broker {
   private subscribers: Subscriber[] = [];
   private deliveries = new Map<string, DeliveryRecord>();
+  private deadLetters: DeadLetterEntry[] = [];
+  private readonly maxAttempts: number;
+  private readonly retryDelayMs: number;
+
+  constructor(config: BrokerConfig = { maxAttempts: 3, retryDelayMS: 1000 }) {
+    this.maxAttempts = config.maxAttempts;
+    this.retryDelayMs = config.retryDelayMS;
+  }
 
   subscribe(subscriber: Subscriber): void {
     this.subscribers.push(subscriber);
   }
 
-  async publish<TPayload>(topic: string, payload: TPayload): Promise<void> {
+  async publish<TPayload>(
+    topic: string,
+    payload: TPayload,
+  ): Promise<PublishResult> {
     const evtMsg: EventMessage<TPayload> = {
       id: randomUUID(),
       topic,
@@ -37,33 +57,17 @@ export class Broker {
 
       return {
         subscriber,
-        promise: subscriber.handleMessage(evtMsg),
+        promise: this.deliverToSubscriber(subscriber, evtMsg, record),
       };
     });
 
-    const results = await Promise.allSettled(
-      deliveries.map((delivery) => delivery.promise),
+    await Promise.allSettled(deliveries.map((delivery) => delivery.promise));
+
+    const relatedDeliveries = this.getDeliveryRecords().filter(
+      (record) => record.messageId === evtMsg.id,
     );
 
-    results.forEach((result, index) => {
-      const delivery = deliveries[index];
-
-      if (!delivery) return; // Guarding against undefined
-
-      const key = createDeliveryKey(evtMsg.id, delivery.subscriber.name);
-
-      const record = this.deliveries.get(key);
-      if (record) {
-        if (result.status === "fulfilled") {
-          record.status = "acked";
-        } else {
-          record.status = "nacked";
-          record.error = result.reason;
-        }
-      }
-    });
-
-    console.log(Array.from(this.deliveries));
+    return createPublishResult(evtMsg.id, topic, relatedDeliveries);
   }
 
   getDeliveryRecords(): DeliveryRecord[] {
@@ -74,5 +78,42 @@ export class Broker {
     return this.getDeliveryRecords().filter(
       (record) => record.status === "nacked",
     );
+  }
+
+  getDeadLetters(): DeadLetterEntry[] {
+    return [...this.deadLetters];
+  }
+
+  private async deliverToSubscriber(
+    subscriber: Subscriber,
+    message: EventMessage,
+    record: DeliveryRecord,
+  ): Promise<void> {
+    try {
+      await subscriber.handleMessage(message);
+
+      record.status = "acked";
+      record.error = undefined;
+    } catch (error) {
+      record.error = error;
+
+      if (record.attempts < this.maxAttempts) {
+        record.attempts++;
+        record.status = "pending";
+
+        await sleep(this.retryDelayMs);
+
+        return this.deliverToSubscriber(subscriber, message, record);
+      }
+
+      record.status = "nacked";
+      record.deadLettered = true;
+
+      this.deadLetters.push({
+        message,
+        delivery: record,
+        failedAt: new Date(),
+      });
+    }
   }
 }
