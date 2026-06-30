@@ -24,4 +24,10 @@ broker.subscribe(new FlakySubscriber());
 //   order: 123,
 // });
 
-await broker.publish("order.created", null);
+try {
+  const result = await broker.publish("order.created", { order: 123 });
+
+  console.dir(result, { depth: null });
+} catch (error) {
+  console.dir(error, { depth: null });
+}

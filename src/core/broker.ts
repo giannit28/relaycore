@@ -19,6 +19,7 @@ import {
   createPublishResult,
   PublishResult,
 } from "../delivery/publish-result.js";
+import { SubscriberError } from "../errors/subscriber-error.js";
 
 type BrokerConfig = {
   maxAttempts: number;
@@ -163,7 +164,19 @@ export class Broker {
       record.status = "acked";
       record.error = undefined;
     } catch (error) {
-      record.error = error;
+      const subscriberError =
+        error instanceof SubscriberError
+          ? error
+          : new SubscriberError(
+              "Subscriber execution failed",
+              subscriber.name,
+              message.topic,
+              message.id,
+              record.attempts,
+              error,
+            );
+
+      record.error = subscriberError;
 
       if (record.attempts < this.maxAttempts) {
         record.attempts++;

@@ -1,4 +1,5 @@
 import type { Middleware, MiddlewareContext } from "./middleware.js";
+import { MiddlewareError } from "../errors/middleware-error.js";
 
 export class MiddlewarePipeline<TPayload = unknown> {
   private middlewares: Middleware<TPayload>[] = [];
@@ -27,7 +28,21 @@ export class MiddlewarePipeline<TPayload = unknown> {
         return;
       }
 
-      await middleware.execute(context, () => dispatch(currentIndex + 1));
+      try {
+        await middleware.execute(context, () => dispatch(currentIndex + 1));
+      } catch (error) {
+        if (error instanceof MiddlewareError) {
+          throw error;
+        }
+
+        throw new MiddlewareError(
+          "Middleware execution failed",
+          middleware.constructor.name,
+          context.message.topic,
+          context.message.id,
+          error,
+        );
+      }
     };
 
     await dispatch(0);
