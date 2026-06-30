@@ -1,5 +1,5 @@
-import { EventMessage } from "../event.js";
-import { Subscriber } from "../subscriber.js";
+import { EventMessage } from "../core/event.js";
+import { Subscriber } from "../core/subscriber.js";
 
 export class EmailSubscriber implements Subscriber {
   name = "Email-Subscriber";

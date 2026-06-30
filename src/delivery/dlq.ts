@@ -1,4 +1,4 @@
-import { EventMessage } from "./event.js";
+import { EventMessage } from "../core/event.js";
 import { DeliveryRecord } from "./delivery.js";
 
 export type DeadLetterEntry = {

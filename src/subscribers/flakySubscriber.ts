@@ -1,4 +1,4 @@
-import { Subscriber } from "../subscriber.js";
+import { Subscriber } from "../core/subscriber.js";
 
 export class FlakySubscriber implements Subscriber {
   name = "FlakySubscriber";

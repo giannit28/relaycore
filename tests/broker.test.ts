@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { Broker } from "../src/broker.js";
-import type { Subscriber } from "../src/subscriber.js";
+import { Broker } from "../src/core/broker.js";
+import type { Subscriber } from "../src/core/subscriber.js";
 
 describe("Broker", () => {
   it("delivers messages only to matching subscribers", async () => {
